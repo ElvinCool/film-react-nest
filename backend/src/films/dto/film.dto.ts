@@ -18,6 +18,7 @@ export class FilmDto {
   title: string;
   about: string;
   description: string;
+  schedule: ScheduleDto[];
 }
 
 export class FilmListResponseDto {
