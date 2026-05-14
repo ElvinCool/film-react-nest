@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { FilmsRepository } from '../repository/films.repository';
-import { FilmDocument } from '../repository/film.schema';
+import { FilmDocument } from '../repository/film.types';
 import {
   CreateOrderDto,
   OrderResponseDto,

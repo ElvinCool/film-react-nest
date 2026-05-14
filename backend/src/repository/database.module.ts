@@ -1,24 +1,29 @@
-import { Global, Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import mongoose from 'mongoose';
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { FilmEntity } from './entities/film.entity';
+import { ScheduleEntity } from './entities/schedule.entity';
 
-@Global()
 @Module({
-  providers: [
-    {
-      provide: 'DATABASE_CONNECTION',
-      useFactory: async (
-        configService: ConfigService,
-      ): Promise<mongoose.Connection> => {
-        const url = configService.get<string>(
-          'DATABASE_URL',
-          'mongodb://localhost:27017/prac',
-        );
-        return mongoose.createConnection(url);
-      },
+  imports: [
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
       inject: [ConfigService],
-    },
+      useFactory: (configService: ConfigService) => {
+        const databaseUrl = configService.get<string>('DATABASE_URL');
+        const url = new URL(databaseUrl);
+        return {
+          type: 'postgres' as const,
+          host: url.hostname,
+          port: url.port ? Number(url.port) : 5432,
+          database: url.pathname.replace(/^\//, ''),
+          username: configService.get<string>('DATABASE_USERNAME'),
+          password: configService.get<string>('DATABASE_PASSWORD'),
+          entities: [FilmEntity, ScheduleEntity],
+          synchronize: false,
+        };
+      },
+    }),
   ],
-  exports: ['DATABASE_CONNECTION'],
 })
 export class DatabaseModule {}

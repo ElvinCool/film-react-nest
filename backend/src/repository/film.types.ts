@@ -1,4 +1,4 @@
-export class ScheduleDto {
+export interface ScheduleDocument {
   id: string;
   daytime: string;
   hall: number;
@@ -8,7 +8,7 @@ export class ScheduleDto {
   taken: string[];
 }
 
-export class FilmDto {
+export interface FilmDocument {
   id: string;
   rating: number;
   director: string;
@@ -18,15 +18,5 @@ export class FilmDto {
   title: string;
   about: string;
   description: string;
-  schedule: ScheduleDto[];
-}
-
-export class FilmListResponseDto {
-  total: number;
-  items: FilmDto[];
-}
-
-export class ScheduleListResponseDto {
-  total: number;
-  items: ScheduleDto[];
+  schedule: ScheduleDocument[];
 }

@@ -6,6 +6,7 @@ import {
   ScheduleDto,
   ScheduleListResponseDto,
 } from './dto/film.dto';
+import { ScheduleDocument } from '../repository/film.types';
 
 @Injectable()
 export class FilmsService {
@@ -23,6 +24,7 @@ export class FilmsService {
       title: film.title,
       about: film.about,
       description: film.description,
+      schedule: film.schedule.map((s) => this.toScheduleDto(s)),
     }));
     return { total: items.length, items };
   }
@@ -32,7 +34,14 @@ export class FilmsService {
     if (!film) {
       return { total: 0, items: [] };
     }
-    const items: ScheduleDto[] = film.schedule.map((s) => ({
+    const items: ScheduleDto[] = film.schedule.map((s) =>
+      this.toScheduleDto(s),
+    );
+    return { total: items.length, items };
+  }
+
+  private toScheduleDto(s: ScheduleDocument): ScheduleDto {
+    return {
       id: s.id,
       daytime: s.daytime,
       hall: s.hall,
@@ -40,7 +49,6 @@ export class FilmsService {
       seats: s.seats,
       price: s.price,
       taken: s.taken,
-    }));
-    return { total: items.length, items };
+    };
   }
 }
