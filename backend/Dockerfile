@@ -1,0 +1,26 @@
+# syntax=docker/dockerfile:1
+
+# ===== Builder =====
+FROM node:18-alpine AS builder
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY tsconfig*.json nest-cli.json ./
+COPY src ./src
+RUN npm run build
+
+# ===== Runtime =====
+FROM node:18-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+COPY --from=builder /app/dist ./dist
+COPY public ./public
+
+EXPOSE 3000
+CMD ["node", "dist/main.js"]

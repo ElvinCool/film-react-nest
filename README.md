@@ -1,36 +1,90 @@
 # FILM!
 
-## Установка
+Онлайн-сервис бронирования билетов в кинотеатр. Бэкенд на Nest.js + PostgreSQL,
+фронтенд на React + Vite. Запускается одной командой через Docker Compose.
 
-### MongoDB
+## Задеплоенное приложение
 
-Установите MongoDB скачав дистрибутив с официального сайта или с помощью пакетного менеджера вашей ОС. Также можно воспользоваться Docker (см. ветку `feat/docker`.
+* **Приложение:** http://85.143.172.43/
+* **API:** http://85.143.172.43/api/afisha/films
+* **Статика (постеры):** http://85.143.172.43/content/afisha/bg1s.jpg
+* **pgAdmin:** http://85.143.172.43:8080/
 
-Выполните скрипт `test/mongodb_initial_stub.js` в консоли `mongo`.
+## Стек
 
-### Бэкенд
+* **Backend** — Node.js 18, NestJS 10, TypeORM 0.3, PostgreSQL 16
+* **Frontend** — React 18, Vite 5, TypeScript
+* **Reverse proxy** — Nginx 1.27
+* **Логирование** — три формата на выбор: `dev` (цветной для людей), `json`, `tskv`
+* **CI/CD** — GitHub Actions, образы публикуются в `ghcr.io`
 
-Перейдите в папку с исходным кодом бэкенда
+## Запуск через Docker Compose (локально)
 
-`cd backend`
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
 
-Установите зависимости (точно такие же, как в package-lock.json) помощью команд
+После старта:
 
-`npm ci` или `yarn install --frozen-lockfile`
+* Приложение — [http://localhost](http://localhost) (порт 80)
+* pgAdmin   — [http://localhost:8080](http://localhost:8080)
 
-Создайте `.env` файл из примера `.env.example`, в нём укажите:
+Затем налейте в БД тестовые данные. Через pgAdmin или из CLI:
 
-* `DATABASE_DRIVER` - тип драйвера СУБД - в нашем случае это `mongodb` 
-* `DATABASE_URL` - адрес СУБД MongoDB, например `mongodb://127.0.0.1:27017/practicum`.  
+```bash
+docker exec -i film_database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" < backend/test/prac.init.sql
+docker exec -i film_database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" < backend/test/prac.films.sql
+docker exec -i film_database psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" < backend/test/prac.shedules.sql
+```
 
-MongoDB должна быть установлена и запущена.
+## Запуск без Docker (для разработки)
 
-Запустите бэкенд:
+```bash
+cd backend
+npm ci
+cp .env.example .env   # заполнить под локальный PostgreSQL
+npm run start:dev
+```
 
-`npm start:debug`
+Фронтенд:
 
-Для проверки отправьте тестовый запрос с помощью Postman или `curl`.
+```bash
+cd frontend
+npm ci
+npm run dev
+```
 
+## Тесты
 
+```bash
+cd backend
+npm test
+```
 
+Покрывают: `JsonLogger`, `TskvLogger`, `FilmsController`, `OrderController`.
 
+## Логгеры
+
+Выбираются переменной окружения `LOGGER_TYPE`:
+
+| Значение | Класс         | Назначение                                |
+| -------- | ------------- | ----------------------------------------- |
+| `dev`    | `DevLogger`   | человекочитаемый, наследник ConsoleLogger |
+| `json`   | `JsonLogger`  | JSON-строка на запись                     |
+| `tskv`   | `TskvLogger`  | Tab-Separated Key-Value (по умолчанию)    |
+
+## Деплой образов в ghcr.io
+
+При пуше в `main` срабатывает workflow `.github/workflows/docker-publish.yml`,
+который собирает три образа (`backend`, `frontend`, `nginx`) и публикует их в
+GitHub Container Registry под тегами `:latest` и `:<sha>`.
+
+## Структура
+
+```
+backend/    NestJS API, TypeORM-репозитории, Dockerfile
+frontend/   React + Vite, Dockerfile (билдер + копирование dist в volume)
+nginx/      Reverse proxy, Dockerfile + default.conf
+docker-compose.yml  Backend + Frontend + Postgres + pgAdmin + nginx
+```
