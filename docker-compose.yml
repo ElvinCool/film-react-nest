@@ -1,17 +1,92 @@
-version: '3.8'
-
 services:
-  pg:
+  database:
     image: postgres:16
-    container_name: postgres_container
+    container_name: film_database
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: prac
-      POSTGRES_PASSWORD: prac
-      POSTGRES_DB: prac
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pg-data:/var/lib/postgresql/data
+    networks:
+      - film-net
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    image: ghcr.io/elvincool/film-react-nest-backend:latest
+    container_name: film_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_DRIVER: ${DATABASE_DRIVER}
+      DATABASE_URL: postgres://database:5432/${POSTGRES_DB}
+      DATABASE_USERNAME: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      LOGGER_TYPE: ${LOGGER_TYPE}
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - film-net
+
+  frontend:
+    build:
+      context: ./frontend
+    image: ghcr.io/elvincool/film-react-nest-frontend:latest
+    container_name: film_frontend
+    restart: on-failure
+    volumes:
+      - frontend-dist:/shared
+    networks:
+      - film-net
+
+  nginx:
+    build:
+      context: ./nginx
+    image: ghcr.io/elvincool/film-react-nest-nginx:latest
+    container_name: film_nginx
+    restart: unless-stopped
     ports:
-      - '5432:5432'
+      - '80:80'
+    volumes:
+      - frontend-dist:/usr/share/nginx/html:ro
+    depends_on:
+      frontend:
+        condition: service_completed_successfully
+      backend:
+        condition: service_started
+    networks:
+      - film-net
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: film_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - '8080:80'
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - film-net
 
 volumes:
   pg-data:
+  pgadmin-data:
+  frontend-dist:
+
+networks:
+  film-net:
+    driver: bridge
